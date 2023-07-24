@@ -1,0 +1,172 @@
+##### Organizations #####
+Organizations:
+    - &ExampleOrderer
+      Name: ExampleOrderer
+      ID: ExampleOrdererMSP
+      MSPDir: /etc/hyperledger/fabric/ordererOrganizations/example.com/msp
+      Policies:
+          Readers:
+              Type: Signature
+              Rule: "OR('ExampleOrdererMSP.member')"
+          Writers:
+              Type: Signature
+              Rule: "OR('ExampleOrdererMSP.member')"
+          Admins:
+              Type: Signature
+              Rule: "OR('ExampleOrdererMSP.admin')"
+      OrdererEndpoints:
+              - "ord1:7050"
+
+    - &ExampleOrg1
+      Name: ExampleOrg1
+      ID: ExampleOrg1MSP
+      MSPDir: /etc/hyperledger/fabric/peerOrganizations/org1.example.com/msp
+      Policies:
+          Readers:
+              Type: Signature
+              Rule: "OR('ExampleOrg1MSP.admin', 'ExampleOrg1MSP.peer', 'ExampleOrg1MSP.client')"
+          Writers:
+              Type: Signature
+              Rule: "OR('ExampleOrg1MSP.admin', 'ExampleOrg1MSP.client')"
+          Admins:
+              Type: Signature
+              Rule: "OR('ExampleOrg1MSP.admin')"
+          Endorsement:
+              Type: Signature
+              Rule: "OR('ExampleOrg1MSP.peer')"
+      AnchorPeers:
+        - Host: peer0.org1.example.com
+          Port: 7051
+
+    - &ExampleOrg2
+      Name: ExampleOrg2
+      ID: ExampleOrg2MSP
+      MSPDir: /etc/hyperledger/fabric/peerOrganizations/org2.example.com/msp
+      Policies:
+          Readers:
+              Type: Signature
+              Rule: "OR('ExampleOrg2MSP.admin', 'ExampleOrg2MSP.peer', 'ExampleOrg2MSP.client')"
+          Writers:
+              Type: Signature
+              Rule: "OR('ExampleOrg2MSP.admin', 'ExampleOrg2MSP.client')"
+          Admins:
+              Type: Signature
+              Rule: "OR('ExampleOrg2MSP.admin')"
+          Endorsement:
+              Type: Signature
+              Rule: "OR('ExampleOrg2MSP.peer')"
+      AnchorPeers:
+        - Host: peer0.org2.example.com
+          Port: 9051
+
+##### Capabilities #####
+Capabilities:
+    Channel: &ChannelCapabilities
+        V2_0: true
+    Orderer: &OrdererCapabilities
+        V2_0: true
+    Application: &ApplicationCapabilities
+        V2_0: true
+
+##### Application #####
+Application: &ApplicationDefaults
+    Policies: &ApplicationDefaultPolicies
+        Readers:
+            Type: ImplicitMeta
+            Rule: "ANY Readers"
+        Writers:
+            Type: ImplicitMeta
+            Rule: "ANY Writers"
+        Admins:
+            Type: ImplicitMeta
+            Rule: "MAJORITY Admins"
+        LifecycleEndorsement:
+            Type: ImplicitMeta
+            Rule: "MAJORITY Endorsement"
+        Endorsement:
+            Type: ImplicitMeta
+            Rule: "MAJORITY Endorsement"
+    Organizations:
+    Capabilities:
+        <<: *ApplicationCapabilities
+
+##### Orderer #####
+Orderer: &OrdererDefaults
+    OrdererType: etcdraft
+    BatchTimeout: 1s
+    BatchSize:
+        MaxMessageCount: 30
+        AbsoluteMaxBytes: 99MB
+        PreferredMaxBytes: 512KB
+    EtcdRaft:
+        Consenters:
+            - Host: orderer.example.com
+              Port: 7050
+              ClientTLSCert: /etc/hyperledger/fabric/ordererOrganizations/example.com/orderers/orderer.example.com/tls/server.crt
+              ServerTLSCert: /etc/hyperledger/fabric/ordererOrganizations/example.com/orderers/orderer.example.com/tls/server.crt
+    Organizations:
+    Policies:
+        Readers:
+            Type: ImplicitMeta
+            Rule: "ANY Readers"
+        Writers:
+            Type: ImplicitMeta
+            Rule: "ANY Writers"
+        Admins:
+            Type: ImplicitMeta
+            Rule: "MAJORITY Admins"
+        BlockValidation:
+            Type: ImplicitMeta
+            Rule: "ANY Writers"
+    Capabilities:
+        <<: *OrdererCapabilities
+
+##### Channel #####
+Channel: &ChannelDefaults
+    Policies:
+        Readers:
+            Type: ImplicitMeta
+            Rule: "ANY Readers"
+        Writers:
+            Type: ImplicitMeta
+            Rule: "ANY Writers"
+        Admins:
+            Type: ImplicitMeta
+            Rule: "MAJORITY Admins"
+        ChannelCreation:
+            Type: ImplicitMeta
+            Rule: "ANY Admins"
+    Capabilities:
+        <<: *ChannelCapabilities
+
+##### Profiles #####
+Profiles:
+    ExampleGenesisBlock:
+        <<: *ChannelDefaults
+        Orderer:
+            <<: *OrdererDefaults
+            Organizations:
+                - *ExampleOrderer
+            Capabilities:
+                <<: *OrdererCapabilities
+        Application:
+            <<: *ApplicationDefaults
+            Organizations:
+                - *ExampleOrg1
+                - *ExampleOrg2
+        Consortiums:
+            SampleConsortium:
+                Organizations:
+                    - *ExampleOrg1
+                    - *ExampleOrg2
+
+    ExampleChannel:
+        Consortium: SampleConsortium
+        <<: *ApplicationDefaults
+        Application:
+            <<: *ApplicationDefaults
+            Capabilities:
+                <<: *ApplicationCapabilities
+            Organizations:
+                - *ExampleOrg1
+                - *ExampleOrg2
